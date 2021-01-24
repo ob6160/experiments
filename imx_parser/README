@@ -1,0 +1,37 @@
+IMX File Reader
+
+Reads binary files in the IMX file format.
+Used to define vectors/matrices of arbitrary size and the data to be stored.
+
+Test data obtained from the http://yann.lecun.com/exdb/mnist/ MNIST Database]
+
+Developed to aid in the completion of CS2NN16 coursework.
+
+Description of the IMX file format:
+
+  /************************************************************************
+   * IMX File Format.
+   *
+   * Read the magic number, defined as four bytes at start of file.
+   * First two bytes are *always* zero
+   *
+   * Third byte represents data type stored in data structure.
+   * - 0x08: unsigned byte
+   * - 0x09: signed byte
+   * - 0x0B: short (2 bytes)
+   * - 0x0C: int (4 bytes)
+   * - 0x0D: float (4 bytes)
+   * - 0x0E: double (8 bytes)
+   *
+   * Fourth byte stores the dimensionality of the structure
+   * - 1: Vector
+   * - 2: Matrices
+   * If there are > 2 dimensions they are accumulated in matrix columns.
+   *
+   * Following this are dimension sizes.
+   * Stored as four byte integers in BigEndian format.
+   *
+   * Finally data is stored as a series of unsigned bytes.
+   *
+   ************************************************************************/
+
