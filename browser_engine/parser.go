@@ -2,6 +2,7 @@ package main
 
 import (
   "bufio"
+  "log"
   "strings"
   "fmt"
 )
@@ -22,9 +23,25 @@ func NewParser(input string, position int) *Parser {
   }
 }
 
+func (p *Parser) accept(check byte) bool {
+  var next, err = p.reader.Peek(1)
+  if err != nil {
+    log.Fatal(err)
+  }
+  if check == next[0] {
+    p.reader.ReadByte()
+    return true
+  }
+  return false
+}
+
+func (p *Parser) expect(check byte) {
+  
+}
+
 func (p *Parser) Parse() {
   r := p.reader
-  b, err := r.Peek(3)
+  b, err := r.Peek(8)
   if err != nil {
       fmt.Println(err)
   }
