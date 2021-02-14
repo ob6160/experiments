@@ -35,17 +35,72 @@ func (p *Parser) accept(check byte) bool {
   return false
 }
 
-func (p *Parser) expect(check byte) {
+func (p *Parser) acceptString(check string) bool {
+  var next, err = p.reader.Peek(len(check) - 1)
+  if err != nil {
+    log.Fatal(err)
+  }
+  if string(next) == check {
+    var readUntil byte = next[len(next) - 1]
+    p.reader.ReadBytes(readUntil)
+    return true
+  }
+  return false
+}
+
+func (p *Parser) expect(check byte) bool {
+  if p.accept(check) {
+    return true
+  }
+  log.Fatal("Syntax error")
+  return false
+}
+
+func (p *Parser) expectString(check string) bool {
+  if p.accept(check[0]) {
+    return true
+  }
+  log.Fatal("Syntax error")
+  return false
+}
+
+
+func (p *Parser) Parse() bool {
+  if p.document() {
+    return true
+  }
+  log.Fatal("Problem parsing input")
+  return false
+}
+
+//func (p *Parser) isTagname(tag string) bool {
+//  return true
+//}
+//
+//func (p *Parser) isWhitespace(char byte) bool {
+//  return true
+//}
+
+func (p *Parser) document() bool {
+  p.expect('<')
+  p.expect('!')
+  p.expectString("DOCTYPE html", '>')
+
+}
+
+func (p *Parser) node() bool {
   
 }
 
-func (p *Parser) Parse() {
-  r := p.reader
-  b, err := r.Peek(8)
-  if err != nil {
-      fmt.Println(err)
-  }
-  fmt.Printf("%q\n", b)
+func (p *Parser) openTag() bool {
+  
 }
+
+func (p *Parser) closeTag() bool {
+  
+}
+
+
+
 
 
