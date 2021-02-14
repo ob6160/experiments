@@ -4,7 +4,6 @@ import (
   "bufio"
   "log"
   "strings"
-  "fmt"
 )
 
 type Parser struct {
@@ -23,44 +22,67 @@ func NewParser(input string, position int) *Parser {
   }
 }
 
-func (p *Parser) accept(check byte) bool {
+func (p *Parser) accept(check []byte) (byte, bool) {
   var next, err = p.reader.Peek(1)
   if err != nil {
     log.Fatal(err)
   }
-  if check == next[0] {
-    p.reader.ReadByte()
-    return true
+  for _, checkByte := range check {
+    if checkByte == next[0] {
+      p.reader.ReadByte()
+      return checkByte, true
+    }
   }
-  return false
+  return next[0], false
 }
 
-func (p *Parser) acceptString(check string) bool {
-  var next, err = p.reader.Peek(len(check) - 1)
+func (p *Parser) acceptString(check string) (string, bool) {
+  var next, err = p.reader.Peek(len(check))
   if err != nil {
     log.Fatal(err)
   }
   if string(next) == check {
-    var readUntil byte = next[len(next) - 1]
+    var readUntil = next[len(next) - 1]
     p.reader.ReadBytes(readUntil)
-    return true
+    return check, true
   }
-  return false
+  return string(next), false
+}
+
+func (p *Parser) acceptUntil(delim byte) (string, bool) {
+  var accepted, err = p.reader.ReadBytes(delim)
+  if err != nil {
+    // delimiter never reached :(
+    log.Fatal(err)
+    return string(accepted), false
+  }
+  return string(accepted), true
+}
+
+func (p *Parser) acceptWhitespace() {
+  // Consume nothingness
+  consumeValues := []byte{'\r', '\n', ' '}
+  state := true
+  for state == true {
+    _, state = p.accept(consumeValues)
+  }
 }
 
 func (p *Parser) expect(check byte) bool {
-  if p.accept(check) {
+  var val, state = p.accept([]byte{check})
+  if state {
     return true
   }
-  log.Fatal("Syntax error")
+  log.Fatal("Syntax error, Expected: ", string(check), " Got: ", string(val))
   return false
 }
 
 func (p *Parser) expectString(check string) bool {
-  if p.accept(check[0]) {
+  var val, state = p.acceptString(check)
+  if state {
     return true
   }
-  log.Fatal("Syntax error")
+  log.Fatal("Syntax error! Expected: ", check, " Got: ", val)
   return false
 }
 
@@ -73,31 +95,37 @@ func (p *Parser) Parse() bool {
   return false
 }
 
-//func (p *Parser) isTagname(tag string) bool {
-//  return true
-//}
-//
-//func (p *Parser) isWhitespace(char byte) bool {
-//  return true
-//}
-
 func (p *Parser) document() bool {
   p.expect('<')
   p.expect('!')
-  p.expectString("DOCTYPE html", '>')
-
+  p.expectString("DOCTYPE html")
+  p.expect('>')
+  p.node()
+  return true
 }
 
 func (p *Parser) node() bool {
+  var openTagName, _ = p.openTag()
+
+  var closeTagName, _ = p.closeTag()
   
+  if openTagName != closeTagName {
+    log.Fatal("Tag name mismatch")
+  }
+  return false
 }
 
-func (p *Parser) openTag() bool {
-  
+func (p *Parser) openTag() (string, bool) {
+  p.expect('<')
+  var tagName, state = p.acceptUntil('>')
+  return tagName, state
 }
 
-func (p *Parser) closeTag() bool {
-  
+func (p *Parser) closeTag() (string, bool) {
+  p.expect('<')
+  p.expect('/')
+  var tagName, state = p.acceptUntil('>')
+  return tagName, state
 }
 
 
