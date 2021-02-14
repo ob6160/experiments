@@ -4,6 +4,7 @@ import (
   "bufio"
   "log"
   "strings"
+  "unicode"
 )
 
 type Parser struct {
@@ -22,14 +23,17 @@ func NewParser(input string, position int) *Parser {
   }
 }
 
-func (p *Parser) accept(check []byte) (byte, bool) {
+func (p *Parser) accept(check ...byte) (byte, bool) {
   var next, err = p.reader.Peek(1)
   if err != nil {
     log.Fatal(err)
   }
   for _, checkByte := range check {
     if checkByte == next[0] {
-      p.reader.ReadByte()
+      _, err = p.reader.ReadByte()
+      if err != nil {
+        log.Fatal(err)
+      }
       return checkByte, true
     }
   }
@@ -61,15 +65,18 @@ func (p *Parser) acceptUntil(delim byte) (string, bool) {
 
 func (p *Parser) acceptWhitespace() {
   // Consume nothingness
-  consumeValues := []byte{'\r', '\n', ' '}
   state := true
   for state == true {
-    _, state = p.accept(consumeValues)
+    _, state = p.accept('\r', '\n', ' ')
   }
 }
 
+func (p *Parser) acceptAlphanumeric() (string, bool) {
+
+}
+
 func (p *Parser) expect(check byte) bool {
-  var val, state = p.accept([]byte{check})
+  var val, state = p.accept(check)
   if state {
     return true
   }
@@ -85,6 +92,10 @@ func (p *Parser) expectString(check string) bool {
   log.Fatal("Syntax error! Expected: ", check, " Got: ", val)
   return false
 }
+
+//func (p *Parser) expectAlphanumeric() (string, bool) {
+// var val, state = p.acc
+//}
 
 
 func (p *Parser) Parse() bool {
@@ -105,18 +116,28 @@ func (p *Parser) document() bool {
 }
 
 func (p *Parser) node() bool {
-  var openTagName, _ = p.openTag()
-
+  p.acceptWhitespace()
+  var openTagName, state = p.openTag()
+  if !state {
+    return false
+  }
+  for p.node() {
+    
+  }
   var closeTagName, _ = p.closeTag()
   
   if openTagName != closeTagName {
-    log.Fatal("Tag name mismatch")
+    log.Fatal(
+      "Tag name mismatch! Expected: ", openTagName[:len(openTagName)-1], " Got: ", closeTagName[:len(closeTagName)-1],
+    )
   }
   return false
 }
 
 func (p *Parser) openTag() (string, bool) {
-  p.expect('<')
+  if !p.expect('<') {
+    return "", false
+  }
   var tagName, state = p.acceptUntil('>')
   return tagName, state
 }
