@@ -2,6 +2,7 @@ package main
 
 import (
   "bufio"
+  "fmt"
   "log"
   "strings"
   "unicode"
@@ -40,6 +41,23 @@ func (p *Parser) accept(check ...byte) (byte, bool) {
   return next[0], false
 }
 
+func (p *Parser) acceptTest(test func(val byte) bool) (byte, bool) {
+  var next, err = p.reader.Peek(1)
+  if err != nil {
+    log.Fatal(err)
+  }
+  value := next[0]
+  valid := test(value)
+  if valid {
+    _, err = p.reader.ReadByte()
+    if err != nil {
+      log.Fatal(err)
+    }
+    return value, true
+  }
+  return 0, false
+}
+
 func (p *Parser) acceptString(check string) (string, bool) {
   var next, err = p.reader.Peek(len(check))
   if err != nil {
@@ -63,7 +81,20 @@ func (p *Parser) acceptUntil(delim byte) (string, bool) {
   return string(accepted), true
 }
 
-func (p *Parser) acceptWhitespace() {
+func (p *Parser) assertNext(chars ...byte) bool {
+  var next, err = p.reader.Peek(len(chars))
+  if err != nil {
+    return false
+  }
+  for i, v := range chars {
+    if v != next[i] {
+      return false
+    }
+  }
+  return true
+}
+
+func (p *Parser) consumeWhitespace() {
   // Consume nothingness
   state := true
   for state == true {
@@ -71,8 +102,24 @@ func (p *Parser) acceptWhitespace() {
   }
 }
 
-func (p *Parser) acceptAlphanumeric() (string, bool) {
+func isAlphanumericOrPunctuation(check byte) bool {
+  return unicode.IsLetter(rune(check)) || unicode.IsNumber(rune(check)) || unicode.IsPunct(rune(check))
+}
 
+func (p *Parser) consumeGivenTest(test func(val byte) bool) (string, bool) {
+  var sb strings.Builder
+  var state = true
+  var val byte
+  for state {
+    val, state = p.acceptTest(test)
+    if state {
+      sb.WriteByte(val)
+    }
+  }
+  if len(sb.String()) == 0 {
+    return "", false
+  }
+  return sb.String(), true
 }
 
 func (p *Parser) expect(check byte) bool {
@@ -93,11 +140,6 @@ func (p *Parser) expectString(check string) bool {
   return false
 }
 
-//func (p *Parser) expectAlphanumeric() (string, bool) {
-// var val, state = p.acc
-//}
-
-
 func (p *Parser) Parse() bool {
   if p.document() {
     return true
@@ -116,35 +158,66 @@ func (p *Parser) document() bool {
 }
 
 func (p *Parser) node() bool {
-  p.acceptWhitespace()
-  var openTagName, state = p.openTag()
-  if !state {
+  p.consumeWhitespace()
+  var openTagName, openState = p.openTag()
+  if !openState {
     return false
   }
-  for p.node() {
-    
+  fmt.Println("Starting node! ", openTagName[:len(openTagName)-1])
+
+  var continueRecursion = true
+  for continueRecursion {
+    // Loop while we find either nodes or text.
+    if p.node() {
+      continue
+    } else {
+      var val, valid = p.consumeGivenTest(isAlphanumericOrPunctuation)
+      if valid {
+        fmt.Println("Consumed string: ", val)
+        continue
+      }
+    }
+    // Reached a point with no text or nodes, exit.
+    continueRecursion = false
   }
-  var closeTagName, _ = p.closeTag()
-  
+
+  var closeTagName, closeState = p.closeTag()
+  if !closeState {
+    return false
+  }
+
   if openTagName != closeTagName {
     log.Fatal(
       "Tag name mismatch! Expected: ", openTagName[:len(openTagName)-1], " Got: ", closeTagName[:len(closeTagName)-1],
     )
   }
-  return false
+  fmt.Println("Ending node! ", openTagName[:len(closeTagName)-1])
+  return true
 }
 
 func (p *Parser) openTag() (string, bool) {
-  if !p.expect('<') {
+  var isClose = p.assertNext('<', '/')
+
+  if isClose {
     return "", false
   }
+
+  var _, valid = p.accept('<')
+  if !valid {
+    return "", false
+  }
+
   var tagName, state = p.acceptUntil('>')
   return tagName, state
 }
 
 func (p *Parser) closeTag() (string, bool) {
-  p.expect('<')
-  p.expect('/')
+  var _, valid = p.acceptString("</")
+
+  if !valid {
+    return "", false
+  }
+
   var tagName, state = p.acceptUntil('>')
   return tagName, state
 }
