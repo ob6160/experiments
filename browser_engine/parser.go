@@ -122,24 +122,6 @@ func (p *Parser) consumeGivenTest(test func(val byte) bool) (string, bool) {
   return sb.String(), true
 }
 
-func (p *Parser) expect(check byte) bool {
-  var val, state = p.accept(check)
-  if state {
-    return true
-  }
-  log.Fatal("Syntax error, Expected: ", string(check), " Got: ", string(val))
-  return false
-}
-
-func (p *Parser) expectString(check string) bool {
-  var val, state = p.acceptString(check)
-  if state {
-    return true
-  }
-  log.Fatal("Syntax error! Expected: ", check, " Got: ", val)
-  return false
-}
-
 func (p *Parser) Parse() bool {
   if p.document() {
     return true
@@ -149,16 +131,17 @@ func (p *Parser) Parse() bool {
 }
 
 func (p *Parser) document() bool {
-  p.expect('<')
-  p.expect('!')
-  p.expectString("DOCTYPE html")
-  p.expect('>')
+  p.accept('<')
+  p.accept('!')
+  p.acceptString("DOCTYPE html")
+  p.accept('>')
   p.node()
   return true
 }
 
 func (p *Parser) node() bool {
   p.consumeWhitespace()
+
   var openTagName, openState = p.openTag()
   if !openState {
     return false
@@ -196,7 +179,7 @@ func (p *Parser) node() bool {
 }
 
 func (p *Parser) openTag() (string, bool) {
-  if p.tagClose() {
+  if p.tagCloseSequence() {
     return "", false
   }
 
@@ -205,11 +188,13 @@ func (p *Parser) openTag() (string, bool) {
     return "", false
   }
 
-  var tagName, state = p.tagName()
-  if state {
+  var tagName, tagCompleted = p.tagName()
+
+  if tagCompleted {
     return tagName, true
   }
 
+  // Tag isn't over yet, cover any attributes we can find.
   for p.attribute() == true {
     p.consumeWhitespace()
 
@@ -224,7 +209,7 @@ func (p *Parser) openTag() (string, bool) {
 }
 
 func (p *Parser) closeTag() (string, bool) {
-  var isClose = p.tagClose()
+  var isClose = p.tagCloseSequence()
   if !isClose {
     return "", false
   }
@@ -239,9 +224,11 @@ func (p *Parser) attribute() bool {
     return val != '='
   })
 
-  if nameState {
-    p.accept('=')
+  if !nameState {
+    return false
   }
+
+  p.accept('=')
   
   p.consumeWhitespace()
   
@@ -253,7 +240,7 @@ func (p *Parser) attribute() bool {
     return val != '"' && val != '\''
   })
 
-  log.Println("Attribute: ", "(", attributeName, ":", attributeValue, ")")
+  log.Println("Attribute: ", "(", attributeName, "=", attributeValue, ")")
 
   if !p.quote() {
     return false
@@ -279,7 +266,7 @@ func (p *Parser) tagEnd() bool {
   return false
 }
 
-func (p *Parser) tagClose() bool {
+func (p *Parser) tagCloseSequence() bool {
   var isClose = p.assertNext('<', '/')
   if isClose {
     return true
