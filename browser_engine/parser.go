@@ -208,54 +208,46 @@ func (p *Parser) openTag() (string, bool) {
   }
 
   var tagName, _ = p.consumeGivenTest(func(val byte) bool {
-    if val == '>' || val == ' ' {
-      return false
-    }
-    return true
+    return val != '>' && val != ' '
   })
-  
-  // if no attributes, return 
-  var isEnd = p.assertNext('>')
-  if isEnd {
-    p.accept('>')
+
+  // Now we've determined the tag name, consume any remaining whitespace.
+  p.consumeWhitespace()
+
+  // Exit early if we've reached the end of the tag.
+  if p.endTag() {
     return tagName, true
   }
 
   for p.attribute() == true {
-    var isEnd = p.assertNext('>')
-    if isEnd {
-      p.accept('>')
+    p.consumeWhitespace()
+
+    // Quit the loop when we find the end of the tag.
+    if p.endTag() {
       return tagName, true
     }
   }
 
-  p.accept('>')
   return tagName, true
 }
 
 func (p *Parser) attribute() bool {
-  p.consumeWhitespace()
-
   var attributeName, nameState = p.consumeGivenTest(func(val byte) bool {
-    if val == '=' {
-      return false
-    }
-    return true
+    return val != '='
   })
 
   if nameState {
     p.accept('=')
   }
   
+  p.consumeWhitespace()
+  
   if !p.quote() {
     return false
   }
 
   var attributeValue, _ = p.consumeGivenTest(func(val byte) bool {
-    if val == '"' || val == '\'' {
-      return false
-    }
-    return true
+    return val != '"' && val != '\''
   })
 
   log.Println("Attribute: ", "(", attributeName, ":", attributeValue, ")")
@@ -263,9 +255,7 @@ func (p *Parser) attribute() bool {
   if !p.quote() {
     return false
   }
-  
-  p.consumeWhitespace()
-  
+
   return true
 }
 
@@ -276,6 +266,15 @@ func (p *Parser) quote() bool {
     return false
   }
   return true
+}
+
+func (p *Parser) endTag() bool {
+  var isEnd = p.assertNext('>')
+  if isEnd {
+    p.accept('>')
+    return true
+  }
+  return false
 }
 
 func (p *Parser) closeTag() (string, bool) {
