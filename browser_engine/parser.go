@@ -148,6 +148,9 @@ func (p *Parser) document() bool {
   return true
 }
 
+/**
+ * Parses a single node.
+ */
 func (p *Parser) node() bool {
   p.consumeWhitespace()
 
@@ -163,6 +166,9 @@ func (p *Parser) node() bool {
     if p.node() {
       continue
     } else {
+      // check for comments?
+
+      // consume anything else.
       var val, valid = p.acceptBytesUntilTest(isAlphanumericOrPunctuation)
       if valid {
         fmt.Println("Consumed string: ", val)
@@ -298,4 +304,15 @@ func (p *Parser) tagName() (string, bool) {
   }
   
   return tagName, false
+}
+
+
+func (p *Parser) commentStart() bool {
+  var isComment = p.assertNext('<', '!', '-', '-')
+  return isComment
+}
+
+func (p *Parser) commentEnd() bool {
+  var isCommentEnd = p.assertNext('-', '-', '>')
+  return isCommentEnd
 }
