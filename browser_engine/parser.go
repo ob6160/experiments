@@ -41,7 +41,7 @@ func (p *Parser) accept(check ...byte) (byte, bool) {
   return next[0], false
 }
 
-func (p *Parser) acceptTest(test func(val byte) bool) (byte, bool) {
+func (p *Parser) acceptByteGivenTest(test func(val byte) bool) (byte, bool) {
   var next, err = p.reader.Peek(1)
   if err != nil {
     log.Fatal(err)
@@ -58,6 +58,22 @@ func (p *Parser) acceptTest(test func(val byte) bool) (byte, bool) {
   return 0, false
 }
 
+func (p *Parser) acceptStringUntilTest(test func(val byte) bool) (string, bool) {
+  var sb strings.Builder
+  var state = true
+  var val byte
+  for state {
+    val, state = p.acceptByteGivenTest(test)
+    if state {
+      sb.WriteByte(val)
+    }
+  }
+  if len(sb.String()) == 0 {
+    return "", false
+  }
+  return sb.String(), true
+}
+
 func (p *Parser) acceptString(check string) (string, bool) {
   var next, err = p.reader.Peek(len(check))
   if err != nil {
@@ -71,14 +87,12 @@ func (p *Parser) acceptString(check string) (string, bool) {
   return string(next), false
 }
 
-func (p *Parser) acceptUntil(delim byte) (string, bool) {
-  var accepted, err = p.reader.ReadBytes(delim)
-  if err != nil {
-    // delimiter never reached :(
-    log.Fatal(err)
-    return string(accepted), false
+func (p *Parser) Parse() bool {
+  if p.document() {
+    return true
   }
-  return string(accepted), true
+  log.Fatal("Problem parsing input")
+  return false
 }
 
 func (p *Parser) assertNext(chars ...byte) bool {
@@ -106,30 +120,6 @@ func isAlphanumericOrPunctuation(check byte) bool {
   return unicode.IsLetter(rune(check)) || unicode.IsNumber(rune(check)) || unicode.IsPunct(rune(check))
 }
 
-func (p *Parser) consumeGivenTest(test func(val byte) bool) (string, bool) {
-  var sb strings.Builder
-  var state = true
-  var val byte
-  for state {
-    val, state = p.acceptTest(test)
-    if state {
-      sb.WriteByte(val)
-    }
-  }
-  if len(sb.String()) == 0 {
-    return "", false
-  }
-  return sb.String(), true
-}
-
-func (p *Parser) Parse() bool {
-  if p.document() {
-    return true
-  }
-  log.Fatal("Problem parsing input")
-  return false
-}
-
 func (p *Parser) document() bool {
   p.accept('<')
   p.accept('!')
@@ -154,7 +144,7 @@ func (p *Parser) node() bool {
     if p.node() {
       continue
     } else {
-      var val, valid = p.consumeGivenTest(isAlphanumericOrPunctuation)
+      var val, valid = p.acceptStringUntilTest(isAlphanumericOrPunctuation)
       if valid {
         fmt.Println("Consumed string: ", val)
         continue
@@ -220,7 +210,7 @@ func (p *Parser) closeTag() (string, bool) {
 }
 
 func (p *Parser) attribute() bool {
-  var attributeName, nameState = p.consumeGivenTest(func(val byte) bool {
+  var attributeName, nameState = p.acceptStringUntilTest(func(val byte) bool {
     return val != '='
   })
 
@@ -236,7 +226,7 @@ func (p *Parser) attribute() bool {
     return false
   }
 
-  var attributeValue, _ = p.consumeGivenTest(func(val byte) bool {
+  var attributeValue, _ = p.acceptStringUntilTest(func(val byte) bool {
     return val != '"' && val != '\''
   })
 
@@ -275,7 +265,7 @@ func (p *Parser) tagCloseSequence() bool {
 }
 
 func (p *Parser) tagName() (string, bool) {
-  var tagName, _ = p.consumeGivenTest(func(val byte) bool {
+  var tagName, _ = p.acceptStringUntilTest(func(val byte) bool {
     return val != '>' && val != ' '
   })
 
