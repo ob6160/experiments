@@ -186,19 +186,17 @@ func (p *Parser) node() bool {
     return false
   }
 
-  if openTagName != closeTagName[:len(closeTagName)-1] {
+  if openTagName != closeTagName {
     log.Fatal(
-      "Tag name mismatch! Expected: ", openTagName, " Got: ", closeTagName[:len(closeTagName)-1],
+      "Tag name mismatch! Expected: ", openTagName, " Got: ", closeTagName,
     )
   }
-  fmt.Println("Ending node! ", openTagName[:len(closeTagName)-1])
+  fmt.Println("Ending node! ", openTagName)
   return true
 }
 
 func (p *Parser) openTag() (string, bool) {
-  var isClose = p.assertNext('<', '/')
-
-  if isClose {
+  if p.tagClose() {
     return "", false
   }
 
@@ -207,15 +205,8 @@ func (p *Parser) openTag() (string, bool) {
     return "", false
   }
 
-  var tagName, _ = p.consumeGivenTest(func(val byte) bool {
-    return val != '>' && val != ' '
-  })
-
-  // Now we've determined the tag name, consume any remaining whitespace.
-  p.consumeWhitespace()
-
-  // Exit early if we've reached the end of the tag.
-  if p.endTag() {
+  var tagName, state = p.tagName()
+  if state {
     return tagName, true
   }
 
@@ -223,12 +214,24 @@ func (p *Parser) openTag() (string, bool) {
     p.consumeWhitespace()
 
     // Quit the loop when we find the end of the tag.
-    if p.endTag() {
+    if p.tagEnd() {
+      p.accept('>')
       return tagName, true
     }
   }
 
   return tagName, true
+}
+
+func (p *Parser) closeTag() (string, bool) {
+  var isClose = p.tagClose()
+  if !isClose {
+    return "", false
+  }
+
+  p.acceptString("</")
+
+  return p.tagName()
 }
 
 func (p *Parser) attribute() bool {
@@ -268,26 +271,38 @@ func (p *Parser) quote() bool {
   return true
 }
 
-func (p *Parser) endTag() bool {
+func (p *Parser) tagEnd() bool {
   var isEnd = p.assertNext('>')
   if isEnd {
-    p.accept('>')
     return true
   }
   return false
 }
 
-func (p *Parser) closeTag() (string, bool) {
-  var _, valid = p.acceptString("</")
-
-  if !valid {
-    return "", false
+func (p *Parser) tagClose() bool {
+  var isClose = p.assertNext('<', '/')
+  if isClose {
+    return true
   }
-
-  var tagName, state = p.acceptUntil('>')
-  return tagName, state
+  return false
 }
 
+func (p *Parser) tagName() (string, bool) {
+  var tagName, _ = p.consumeGivenTest(func(val byte) bool {
+    return val != '>' && val != ' '
+  })
+
+  // Now we've determined the tag name, consume any remaining whitespace.
+  p.consumeWhitespace()
+
+  // Exit early if we've reached the end of the tag.
+  if p.tagEnd() {
+    p.accept('>')
+    return tagName, true
+  }
+  
+  return tagName, false
+}
 
 
 
