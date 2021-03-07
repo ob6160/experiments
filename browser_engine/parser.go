@@ -207,7 +207,7 @@ func (p *Parser) openTag() (string, bool) {
     return "", false
   }
 
-  var tagName, tagNameValid = p.consumeGivenTest(func(val byte) bool {
+  var tagName, _ = p.consumeGivenTest(func(val byte) bool {
     if val == '>' || val == ' ' {
       return false
     }
@@ -221,37 +221,61 @@ func (p *Parser) openTag() (string, bool) {
     return tagName, true
   }
 
-
-  fmt.Println("Tag started: ", tagName, " ", tagNameValid)
-  p.attribute()
+  for p.attribute() == true {
+    var isEnd = p.assertNext('>')
+    if isEnd {
+      p.accept('>')
+      return tagName, true
+    }
+  }
 
   p.accept('>')
   return tagName, true
 }
 
-func (p *Parser) attribute() (string, bool) {
+func (p *Parser) attribute() bool {
+  p.consumeWhitespace()
+
   var attributeName, nameState = p.consumeGivenTest(func(val byte) bool {
     if val == '=' {
       return false
     }
     return true
   })
-  log.Println("Parsed attribute name: ", attributeName, " ", nameState)
-  
+
   if nameState {
     p.accept('=')
   }
   
-  var attributeValue, valueState = p.consumeGivenTest(func(val byte) bool {
-    if val == '>' || val == ' ' {
+  if !p.quote() {
+    return false
+  }
+
+  var attributeValue, _ = p.consumeGivenTest(func(val byte) bool {
+    if val == '"' || val == '\'' {
       return false
     }
     return true
   })
 
-  log.Println("Parsed attribute value: ", attributeValue, " ", nameState)
+  log.Println("Attribute: ", "(", attributeName, ":", attributeValue, ")")
+
+  if !p.quote() {
+    return false
+  }
   
-  return attributeName, nameState && valueState
+  p.consumeWhitespace()
+  
+  return true
+}
+
+func (p *Parser) quote() bool {
+  var _, quote = p.accept('"', '\'')
+  // invalid attribute value
+  if !quote {
+    return false
+  }
+  return true
 }
 
 func (p *Parser) closeTag() (string, bool) {
