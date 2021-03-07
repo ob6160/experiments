@@ -24,6 +24,10 @@ func NewParser(input string, position int) *Parser {
   }
 }
 
+/**
+ * Accept the next byte if it's any of the provided check bytes.
+ * TODO: is this needed?
+ */
 func (p *Parser) accept(check ...byte) (byte, bool) {
   var next, err = p.reader.Peek(1)
   if err != nil {
@@ -41,6 +45,9 @@ func (p *Parser) accept(check ...byte) (byte, bool) {
   return next[0], false
 }
 
+/**
+ * Consumes bytes until provided test function returns true.
+ */
 func (p *Parser) acceptByteGivenTest(test func(val byte) bool) (byte, bool) {
   var next, err = p.reader.Peek(1)
   if err != nil {
@@ -58,7 +65,10 @@ func (p *Parser) acceptByteGivenTest(test func(val byte) bool) (byte, bool) {
   return 0, false
 }
 
-func (p *Parser) acceptStringUntilTest(test func(val byte) bool) (string, bool) {
+/**
+ * Consumes all the bytes until provided test function returns true.
+ */
+func (p *Parser) acceptBytesUntilTest(test func(val byte) bool) (string, bool) {
   var sb strings.Builder
   var state = true
   var val byte
@@ -74,6 +84,9 @@ func (p *Parser) acceptStringUntilTest(test func(val byte) bool) (string, bool) 
   return sb.String(), true
 }
 
+/**
+ * Peeks ahead and consumes a string if it's found.
+ */
 func (p *Parser) acceptString(check string) (string, bool) {
   var next, err = p.reader.Peek(len(check))
   if err != nil {
@@ -87,14 +100,10 @@ func (p *Parser) acceptString(check string) (string, bool) {
   return string(next), false
 }
 
-func (p *Parser) Parse() bool {
-  if p.document() {
-    return true
-  }
-  log.Fatal("Problem parsing input")
-  return false
-}
 
+/**
+ * Looks ahead without consuming.
+ */
 func (p *Parser) assertNext(chars ...byte) bool {
   var next, err = p.reader.Peek(len(chars))
   if err != nil {
@@ -108,8 +117,8 @@ func (p *Parser) assertNext(chars ...byte) bool {
   return true
 }
 
+// Consumes nothingness: carriage returns, newlines and spaces.
 func (p *Parser) consumeWhitespace() {
-  // Consume nothingness
   state := true
   for state == true {
     _, state = p.accept('\r', '\n', ' ')
@@ -118,6 +127,16 @@ func (p *Parser) consumeWhitespace() {
 
 func isAlphanumericOrPunctuation(check byte) bool {
   return unicode.IsLetter(rune(check)) || unicode.IsNumber(rune(check)) || unicode.IsPunct(rune(check))
+}
+
+/* Actual parsing starts here */
+
+func (p *Parser) Parse() bool {
+  if p.document() {
+    return true
+  }
+  log.Fatal("Problem parsing input")
+  return false
 }
 
 func (p *Parser) document() bool {
@@ -144,7 +163,7 @@ func (p *Parser) node() bool {
     if p.node() {
       continue
     } else {
-      var val, valid = p.acceptStringUntilTest(isAlphanumericOrPunctuation)
+      var val, valid = p.acceptBytesUntilTest(isAlphanumericOrPunctuation)
       if valid {
         fmt.Println("Consumed string: ", val)
         continue
@@ -210,7 +229,7 @@ func (p *Parser) closeTag() (string, bool) {
 }
 
 func (p *Parser) attribute() bool {
-  var attributeName, nameState = p.acceptStringUntilTest(func(val byte) bool {
+  var attributeName, nameState = p.acceptBytesUntilTest(func(val byte) bool {
     return val != '='
   })
 
@@ -226,7 +245,7 @@ func (p *Parser) attribute() bool {
     return false
   }
 
-  var attributeValue, _ = p.acceptStringUntilTest(func(val byte) bool {
+  var attributeValue, _ = p.acceptBytesUntilTest(func(val byte) bool {
     return val != '"' && val != '\''
   })
 
@@ -265,7 +284,7 @@ func (p *Parser) tagCloseSequence() bool {
 }
 
 func (p *Parser) tagName() (string, bool) {
-  var tagName, _ = p.acceptStringUntilTest(func(val byte) bool {
+  var tagName, _ = p.acceptBytesUntilTest(func(val byte) bool {
     return val != '>' && val != ' '
   })
 
@@ -280,7 +299,3 @@ func (p *Parser) tagName() (string, bool) {
   
   return tagName, false
 }
-
-
-
-
