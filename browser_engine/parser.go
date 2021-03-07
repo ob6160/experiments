@@ -163,7 +163,7 @@ func (p *Parser) node() bool {
   if !openState {
     return false
   }
-  fmt.Println("Starting node! ", openTagName[:len(openTagName)-1])
+  fmt.Println("Starting node! ", openTagName)
 
   var continueRecursion = true
   for continueRecursion {
@@ -186,9 +186,9 @@ func (p *Parser) node() bool {
     return false
   }
 
-  if openTagName != closeTagName {
+  if openTagName != closeTagName[:len(closeTagName)-1] {
     log.Fatal(
-      "Tag name mismatch! Expected: ", openTagName[:len(openTagName)-1], " Got: ", closeTagName[:len(closeTagName)-1],
+      "Tag name mismatch! Expected: ", openTagName, " Got: ", closeTagName[:len(closeTagName)-1],
     )
   }
   fmt.Println("Ending node! ", openTagName[:len(closeTagName)-1])
@@ -207,8 +207,51 @@ func (p *Parser) openTag() (string, bool) {
     return "", false
   }
 
-  var tagName, state = p.acceptUntil('>')
-  return tagName, state
+  var tagName, tagNameValid = p.consumeGivenTest(func(val byte) bool {
+    if val == '>' || val == ' ' {
+      return false
+    }
+    return true
+  })
+  
+  // if no attributes, return 
+  var isEnd = p.assertNext('>')
+  if isEnd {
+    p.accept('>')
+    return tagName, true
+  }
+
+
+  fmt.Println("Tag started: ", tagName, " ", tagNameValid)
+  p.attribute()
+
+  p.accept('>')
+  return tagName, true
+}
+
+func (p *Parser) attribute() (string, bool) {
+  var attributeName, nameState = p.consumeGivenTest(func(val byte) bool {
+    if val == '=' {
+      return false
+    }
+    return true
+  })
+  log.Println("Parsed attribute name: ", attributeName, " ", nameState)
+  
+  if nameState {
+    p.accept('=')
+  }
+  
+  var attributeValue, valueState = p.consumeGivenTest(func(val byte) bool {
+    if val == '>' || val == ' ' {
+      return false
+    }
+    return true
+  })
+
+  log.Println("Parsed attribute value: ", attributeValue, " ", nameState)
+  
+  return attributeName, nameState && valueState
 }
 
 func (p *Parser) closeTag() (string, bool) {

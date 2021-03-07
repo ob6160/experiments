@@ -31,6 +31,7 @@
     <property name="WebServerToolWindowFactoryState" value="false" />
     <property name="go.import.settings.migrated" value="true" />
     <property name="go.sdk.automatically.set" value="true" />
+    <property name="go.tried.to.enable.integration.vgo.integrator" value="true" />
     <property name="last_opened_file_path" value="$PROJECT_DIR$" />
     <property name="nodejs_interpreter_path.stuck_in_default_project" value="undefined stuck path" />
     <property name="nodejs_npm_path_reset_for_default_project" value="true" />
@@ -50,34 +51,45 @@
   <component name="TypeScriptGeneratedFilesManager">
     <option name="version" value="3" />
   </component>
+  <component name="VgoProject">
+    <integration-enabled>true</integration-enabled>
+  </component>
   <component name="WindowStateProjectService">
     <state x="760" y="503" key="#GOROOT" timestamp="1613255662956">
       <screen x="0" y="0" width="1920" height="1080" />
     </state>
     <state x="760" y="503" key="#GOROOT/0.0.1920.1080@0.0.1920.1080" timestamp="1613255662956" />
+    <state x="760" y="1187" width="400" height="297" key="#Go_Modules" timestamp="1615142995481">
+      <screen x="0" y="720" width="1920" height="1200" />
+    </state>
+    <state x="760" y="1187" width="400" height="297" key="#Go_Modules/1920.0.1200.1920/0.720.1920.1200/3120.0.1920.1080@0.720.1920.1200" timestamp="1615142995481" />
     <state x="424" y="228" key="#com.intellij.execution.impl.EditConfigurationsDialog" timestamp="1613255835999">
       <screen x="0" y="0" width="1920" height="1080" />
     </state>
     <state x="424" y="228" key="#com.intellij.execution.impl.EditConfigurationsDialog/0.0.1920.1080@0.0.1920.1080" timestamp="1613255835999" />
-    <state width="1874" height="217" key="GridCell.Tab.0.bottom" timestamp="1613601730743">
+    <state width="1874" height="255" key="GridCell.Tab.0.bottom" timestamp="1615147457045">
       <screen x="0" y="720" width="1920" height="1200" />
     </state>
     <state width="1874" height="224" key="GridCell.Tab.0.bottom/0.0.1920.1080@0.0.1920.1080" timestamp="1613341082526" />
+    <state width="1874" height="255" key="GridCell.Tab.0.bottom/1920.0.1200.1920/0.720.1920.1200/3120.0.1920.1080@0.720.1920.1200" timestamp="1615147457045" />
     <state width="1874" height="217" key="GridCell.Tab.0.bottom/3120.0.1920.1080/1920.0.1200.1920/0.720.1920.1200@0.720.1920.1200" timestamp="1613601730743" />
-    <state width="1874" height="217" key="GridCell.Tab.0.center" timestamp="1613601730743">
+    <state width="1874" height="255" key="GridCell.Tab.0.center" timestamp="1615147457045">
       <screen x="0" y="720" width="1920" height="1200" />
     </state>
     <state width="1874" height="224" key="GridCell.Tab.0.center/0.0.1920.1080@0.0.1920.1080" timestamp="1613341082523" />
+    <state width="1874" height="255" key="GridCell.Tab.0.center/1920.0.1200.1920/0.720.1920.1200/3120.0.1920.1080@0.720.1920.1200" timestamp="1615147457045" />
     <state width="1874" height="217" key="GridCell.Tab.0.center/3120.0.1920.1080/1920.0.1200.1920/0.720.1920.1200@0.720.1920.1200" timestamp="1613601730743" />
-    <state width="1874" height="217" key="GridCell.Tab.0.left" timestamp="1613601730743">
+    <state width="1874" height="255" key="GridCell.Tab.0.left" timestamp="1615147457044">
       <screen x="0" y="720" width="1920" height="1200" />
     </state>
     <state width="1874" height="224" key="GridCell.Tab.0.left/0.0.1920.1080@0.0.1920.1080" timestamp="1613341082521" />
+    <state width="1874" height="255" key="GridCell.Tab.0.left/1920.0.1200.1920/0.720.1920.1200/3120.0.1920.1080@0.720.1920.1200" timestamp="1615147457044" />
     <state width="1874" height="217" key="GridCell.Tab.0.left/3120.0.1920.1080/1920.0.1200.1920/0.720.1920.1200@0.720.1920.1200" timestamp="1613601730743" />
-    <state width="1874" height="217" key="GridCell.Tab.0.right" timestamp="1613601730743">
+    <state width="1874" height="255" key="GridCell.Tab.0.right" timestamp="1615147457045">
       <screen x="0" y="720" width="1920" height="1200" />
     </state>
     <state width="1874" height="224" key="GridCell.Tab.0.right/0.0.1920.1080@0.0.1920.1080" timestamp="1613341082525" />
+    <state width="1874" height="255" key="GridCell.Tab.0.right/1920.0.1200.1920/0.720.1920.1200/3120.0.1920.1080@0.720.1920.1200" timestamp="1615147457045" />
     <state width="1874" height="217" key="GridCell.Tab.0.right/3120.0.1920.1080/1920.0.1200.1920/0.720.1920.1200@0.720.1920.1200" timestamp="1613601730743" />
     <state width="1874" height="217" key="GridCell.Tab.1.bottom" timestamp="1613601730653">
       <screen x="0" y="720" width="1920" height="1200" />
