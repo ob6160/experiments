@@ -250,14 +250,3 @@ func (p *Parser) attribute() bool {
   log.Println("Attribute: ", "(", attributeName, "=", attributeValue, ")")
   return true
 }
-
-//
-//func (p *Parser) commentStart() bool {
-// var start = p.acceptString("<!--")
-// return isComment
-//}
-//
-//func (p *Parser) commentEnd() bool {
-// var _, isCommentEnd = p.acceptString("-->")
-// return isCommentEnd
-//}
