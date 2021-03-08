@@ -126,6 +126,10 @@ func isEquals(check byte) bool {
   return check != '='
 }
 
+func isEqualsOrCloseBracket(check byte) bool {
+  return check != '=' && check != '>'
+}
+
 func isQuote(check byte) bool {
   return check != '"' && check != '\''
 }
@@ -156,30 +160,22 @@ func (p *Parser) node() bool {
     return false
   }
 
-  var continueRecursion = true
-  for continueRecursion {
-    // Loop while we find either nodes or text.
-    if p.node() {
-      continue
-    } else {
-      // check for comments?
-
-      // consume anything else.
-      var val = p.acceptBytesUntilTest(isAlphanumericOrPunctuation)
-      if len(val) > 0 {
-        fmt.Println("Consumed string: ", val)
-        continue
-      }
-    }
-    // Reached a point with no text or nodes, exit.
-    continueRecursion = false
-  }
+  for p.node() || p.text() {}
 
   if !p.closeTag() {
     return false
   }
 
   return true
+}
+
+func (p *Parser) text() bool {
+   var val = p.acceptBytesUntilTest(isAlphanumericOrPunctuation)
+   if len(val) > 0 {
+     fmt.Println("Consumed string: ", val)
+     return true
+   }
+   return false
 }
 
 func (p *Parser) openTag() bool {
@@ -209,11 +205,13 @@ func (p *Parser) openTag() bool {
     }
   }
 
-  return true
+  return false
 }
 
 func (p *Parser) closeTag() bool {
-  p.acceptString("</")
+  if !p.acceptString("</") {
+    return false
+  }
   
   var tagName = p.tagName()
 
@@ -222,11 +220,24 @@ func (p *Parser) closeTag() bool {
   return p.accept('>')
 }
 
-func (p *Parser) attribute() bool {
-  var attributeName = p.acceptBytesUntilTest(isEquals)
+func (p *Parser) tagName() string {
+  var tagName = p.acceptBytesUntilTest(func(val byte) bool {
+    return !(val == '>' || val == ' ')
+  })
 
+  // Now we've determined the tag name, consume any remaining whitespace.
+  p.consumeWhitespace()
+  return tagName
+}
+
+func (p *Parser) attribute() bool {
+  var attributeName = p.acceptBytesUntilTest(isEqualsOrCloseBracket)
+
+
+  // We have an attribute without a value
   if !p.accept('=') {
-    return false
+    log.Println("Attribute: ", "(", attributeName, ")")
+    return true
   }
   
   p.consumeWhitespace()
@@ -245,23 +256,13 @@ func (p *Parser) attribute() bool {
   return true
 }
 
-func (p *Parser) tagName() string {
-  var tagName = p.acceptBytesUntilTest(func(val byte) bool {
-    return !(val == '>' || val == ' ')
-  })
-
-  // Now we've determined the tag name, consume any remaining whitespace.
-  p.consumeWhitespace()
-  return tagName
-}
-
-
+//
 //func (p *Parser) commentStart() bool {
-//  var _, isComment = p.acceptString("<!--")
-//  return isComment
+// var start = p.acceptString("<!--")
+// return isComment
 //}
 //
 //func (p *Parser) commentEnd() bool {
-//  var _, isCommentEnd = p.acceptString("-->")
-//  return isCommentEnd
+// var _, isCommentEnd = p.acceptString("-->")
+// return isCommentEnd
 //}
