@@ -16,7 +16,7 @@ type Parser struct {
 
 func NewParser(input string, position int) *Parser {
   sr := strings.NewReader(input)
-  var reader *bufio.Reader = bufio.NewReader(sr)
+  var reader = bufio.NewReader(sr)
   return &Parser{
     input,
     position,
@@ -26,9 +26,8 @@ func NewParser(input string, position int) *Parser {
 
 /**
  * Accept the next byte if it's any of the provided check bytes.
- * TODO: is this needed?
  */
-func (p *Parser) accept(check ...byte) (byte, bool) {
+func (p *Parser) accept(check ...byte) bool {
   var next, err = p.reader.Peek(1)
   if err != nil {
     log.Fatal(err)
@@ -39,10 +38,33 @@ func (p *Parser) accept(check ...byte) (byte, bool) {
       if err != nil {
         log.Fatal(err)
       }
-      return checkByte, true
+      return true
     }
   }
-  return next[0], false
+  return false
+}
+
+/**
+ * Asserts that the next len(check) bytes match the check string.
+ */
+func (p *Parser) assertString(check string) bool {
+  var next, err = p.reader.Peek(len(check))
+  if err != nil {
+    log.Fatal(err)
+  }
+  return string(next) == check
+}
+
+/**
+ * Peeks ahead and consumes a string if it's found.
+ */
+func (p *Parser) acceptString(check string) bool {
+  if p.assertString(check) {
+    var readUntil = check[len(check) - 1]
+    p.reader.ReadBytes(readUntil)
+    return true
+  }
+  return false
 }
 
 /**
@@ -53,14 +75,13 @@ func (p *Parser) acceptByteGivenTest(test func(val byte) bool) (byte, bool) {
   if err != nil {
     log.Fatal(err)
   }
-  value := next[0]
-  valid := test(value)
+  valid := test(next[0])
   if valid {
     _, err = p.reader.ReadByte()
     if err != nil {
       log.Fatal(err)
     }
-    return value, true
+    return next[0], true
   }
   return 0, false
 }
@@ -68,7 +89,7 @@ func (p *Parser) acceptByteGivenTest(test func(val byte) bool) (byte, bool) {
 /**
  * Consumes all the bytes until provided test function returns true.
  */
-func (p *Parser) acceptBytesUntilTest(test func(val byte) bool) (string, bool) {
+func (p *Parser) acceptBytesUntilTest(test func(val byte) bool) string {
   var sb strings.Builder
   var state = true
   var val byte
@@ -79,49 +100,16 @@ func (p *Parser) acceptBytesUntilTest(test func(val byte) bool) (string, bool) {
     }
   }
   if len(sb.String()) == 0 {
-    return "", false
+    return ""
   }
-  return sb.String(), true
-}
-
-/**
- * Peeks ahead and consumes a string if it's found.
- */
-func (p *Parser) acceptString(check string) (string, bool) {
-  var next, err = p.reader.Peek(len(check))
-  if err != nil {
-    log.Fatal(err)
-  }
-  if string(next) == check {
-    var readUntil = next[len(next) - 1]
-    p.reader.ReadBytes(readUntil)
-    return check, true
-  }
-  return string(next), false
-}
-
-
-/**
- * Looks ahead without consuming.
- */
-func (p *Parser) assertNext(chars ...byte) bool {
-  var next, err = p.reader.Peek(len(chars))
-  if err != nil {
-    return false
-  }
-  for i, v := range chars {
-    if v != next[i] {
-      return false
-    }
-  }
-  return true
+  return sb.String()
 }
 
 // Consumes nothingness: carriage returns, newlines and spaces.
 func (p *Parser) consumeWhitespace() {
   state := true
   for state == true {
-    _, state = p.accept('\r', '\n', ' ')
+    state = p.accept('\r', '\n', ' ')
   }
 }
 
@@ -140,10 +128,7 @@ func (p *Parser) Parse() bool {
 }
 
 func (p *Parser) document() bool {
-  p.accept('<')
-  p.accept('!')
-  p.acceptString("DOCTYPE html")
-  p.accept('>')
+  p.acceptString("<!DOCTYPE html>")
   p.node()
   return true
 }
@@ -154,11 +139,9 @@ func (p *Parser) document() bool {
 func (p *Parser) node() bool {
   p.consumeWhitespace()
 
-  var openTagName, openState = p.openTag()
-  if !openState {
+  if !p.openTag() {
     return false
   }
-  fmt.Println("Starting node! ", openTagName)
 
   var continueRecursion = true
   for continueRecursion {
@@ -169,8 +152,8 @@ func (p *Parser) node() bool {
       // check for comments?
 
       // consume anything else.
-      var val, valid = p.acceptBytesUntilTest(isAlphanumericOrPunctuation)
-      if valid {
+      var val = p.acceptBytesUntilTest(isAlphanumericOrPunctuation)
+      if len(val) > 0 {
         fmt.Println("Consumed string: ", val)
         continue
       }
@@ -179,34 +162,30 @@ func (p *Parser) node() bool {
     continueRecursion = false
   }
 
-  var closeTagName, closeState = p.closeTag()
-  if !closeState {
+  if !p.closeTag() {
     return false
   }
 
-  if openTagName != closeTagName {
-    log.Fatal(
-      "Tag name mismatch! Expected: ", openTagName, " Got: ", closeTagName,
-    )
-  }
-  fmt.Println("Ending node! ", openTagName)
   return true
 }
 
-func (p *Parser) openTag() (string, bool) {
-  if p.tagCloseSequence() {
-    return "", false
+func (p *Parser) openTag() bool {
+  // if it's a close tag, bail out.
+  if p.assertString("</") {
+    return false
   }
 
-  var _, valid = p.accept('<')
-  if !valid {
-    return "", false
+  var isOpened = p.acceptString("<")
+  if !isOpened {
+    return false
   }
 
-  var tagName, tagCompleted = p.tagName()
+  var tagName = p.tagName()
+  fmt.Println("Open tag: ", tagName)
 
-  if tagCompleted {
-    return tagName, true
+  // Exit early if we've reached the end of the tag.
+  if p.accept('>') {
+    return true
   }
 
   // Tag isn't over yet, cover any attributes we can find.
@@ -214,105 +193,68 @@ func (p *Parser) openTag() (string, bool) {
     p.consumeWhitespace()
 
     // Quit the loop when we find the end of the tag.
-    if p.tagEnd() {
-      p.accept('>')
-      return tagName, true
+    if p.accept('>') {
+      return true
     }
   }
 
-  return tagName, true
+  return true
 }
 
-func (p *Parser) closeTag() (string, bool) {
-  var isClose = p.tagCloseSequence()
-  if !isClose {
-    return "", false
-  }
-
+func (p *Parser) closeTag() bool {
   p.acceptString("</")
+  
+  var tagName = p.tagName()
+  fmt.Println("Close tag: ", tagName)
 
-  return p.tagName()
+  return p.accept('>')
 }
 
 func (p *Parser) attribute() bool {
-  var attributeName, nameState = p.acceptBytesUntilTest(func(val byte) bool {
+  var attributeName = p.acceptBytesUntilTest(func(val byte) bool {
     return val != '='
   })
-
-  if !nameState {
-    return false
-  }
 
   p.accept('=')
   
   p.consumeWhitespace()
   
-  if !p.quote() {
+  if !p.accept('"', '\'') {
     return false
   }
 
-  var attributeValue, _ = p.acceptBytesUntilTest(func(val byte) bool {
+  var attributeValue = p.acceptBytesUntilTest(func(val byte) bool {
     return val != '"' && val != '\''
   })
 
+
+  if !p.accept('"', '\'') {
+    return false
+  }
+
   log.Println("Attribute: ", "(", attributeName, "=", attributeValue, ")")
 
-  if !p.quote() {
-    return false
-  }
 
   return true
 }
 
-func (p *Parser) quote() bool {
-  var _, quote = p.accept('"', '\'')
-  // invalid attribute value
-  if !quote {
-    return false
-  }
-  return true
-}
-
-func (p *Parser) tagEnd() bool {
-  var isEnd = p.assertNext('>')
-  if isEnd {
-    return true
-  }
-  return false
-}
-
-func (p *Parser) tagCloseSequence() bool {
-  var isClose = p.assertNext('<', '/')
-  if isClose {
-    return true
-  }
-  return false
-}
-
-func (p *Parser) tagName() (string, bool) {
-  var tagName, _ = p.acceptBytesUntilTest(func(val byte) bool {
-    return val != '>' && val != ' '
+func (p *Parser) tagName() string {
+  var tagName = p.acceptBytesUntilTest(func(val byte) bool {
+    return !(val == '>' || val == ' ')
   })
 
   // Now we've determined the tag name, consume any remaining whitespace.
   p.consumeWhitespace()
-
-  // Exit early if we've reached the end of the tag.
-  if p.tagEnd() {
-    p.accept('>')
-    return tagName, true
-  }
-  
-  return tagName, false
+  return tagName
 }
 
 
-func (p *Parser) commentStart() bool {
-  var isComment = p.assertNext('<', '!', '-', '-')
-  return isComment
-}
-
-func (p *Parser) commentEnd() bool {
-  var isCommentEnd = p.assertNext('-', '-', '>')
-  return isCommentEnd
-}
+//func (p *Parser) commentStart() bool {
+//  var _, isComment = p.acceptString("<!--")
+//  return isComment
+//}
+//
+//func (p *Parser) commentEnd() bool {
+//  var _, isCommentEnd = p.acceptString("-->")
+//  return isCommentEnd
+//}
