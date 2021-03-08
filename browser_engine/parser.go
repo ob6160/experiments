@@ -114,7 +114,20 @@ func (p *Parser) consumeWhitespace() {
 }
 
 func isAlphanumericOrPunctuation(check byte) bool {
-  return unicode.IsLetter(rune(check)) || unicode.IsNumber(rune(check)) || unicode.IsPunct(rune(check))
+  return unicode.IsLetter(rune(check)) ||
+    unicode.IsNumber(rune(check)) ||
+    unicode.IsPunct(rune(check)) ||
+    check == ' ' ||
+    check == '\r' ||
+    check == '\n'
+}
+
+func isEquals(check byte) bool {
+  return check != '='
+}
+
+func isQuote(check byte) bool {
+  return check != '"' && check != '\''
 }
 
 /* Actual parsing starts here */
@@ -175,8 +188,7 @@ func (p *Parser) openTag() bool {
     return false
   }
 
-  var isOpened = p.acceptString("<")
-  if !isOpened {
+  if !p.accept('<') {
     return false
   }
 
@@ -191,7 +203,6 @@ func (p *Parser) openTag() bool {
   // Tag isn't over yet, cover any attributes we can find.
   for p.attribute() == true {
     p.consumeWhitespace()
-
     // Quit the loop when we find the end of the tag.
     if p.accept('>') {
       return true
@@ -205,17 +216,18 @@ func (p *Parser) closeTag() bool {
   p.acceptString("</")
   
   var tagName = p.tagName()
+
   fmt.Println("Close tag: ", tagName)
 
   return p.accept('>')
 }
 
 func (p *Parser) attribute() bool {
-  var attributeName = p.acceptBytesUntilTest(func(val byte) bool {
-    return val != '='
-  })
+  var attributeName = p.acceptBytesUntilTest(isEquals)
 
-  p.accept('=')
+  if !p.accept('=') {
+    return false
+  }
   
   p.consumeWhitespace()
   
@@ -223,18 +235,13 @@ func (p *Parser) attribute() bool {
     return false
   }
 
-  var attributeValue = p.acceptBytesUntilTest(func(val byte) bool {
-    return val != '"' && val != '\''
-  })
-
+  var attributeValue = p.acceptBytesUntilTest(isQuote)
 
   if !p.accept('"', '\'') {
     return false
   }
 
   log.Println("Attribute: ", "(", attributeName, "=", attributeValue, ")")
-
-
   return true
 }
 
