@@ -109,7 +109,7 @@ func (p *Parser) acceptBytesUntilTest(test func(val byte) bool) string {
 func (p *Parser) consumeWhitespace() {
   state := true
   for state == true {
-    state = p.accept('\r', '\n', ' ')
+    state = p.accept('\r', '\n', ' ', '\t')
   }
 }
 
@@ -122,12 +122,8 @@ func isAlphanumericOrPunctuation(check byte) bool {
     check == '\n'
 }
 
-func isEquals(check byte) bool {
-  return check != '='
-}
-
-func isEqualsOrCloseBracket(check byte) bool {
-  return check != '=' && check != '>'
+func isAttributeSplit(check byte) bool {
+  return check != '=' && check != '>' && check != ' '
 }
 
 func isQuote(check byte) bool {
@@ -231,8 +227,7 @@ func (p *Parser) tagName() string {
 }
 
 func (p *Parser) attribute() bool {
-  var attributeName = p.acceptBytesUntilTest(isEqualsOrCloseBracket)
-
+  var attributeName = p.acceptBytesUntilTest(isAttributeSplit)
 
   // We have an attribute without a value
   if !p.accept('=') {
