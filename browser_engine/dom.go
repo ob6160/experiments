@@ -1,35 +1,21 @@
 package main
 
 type DOMNode struct {
-  children []DOMNode
-}
-
-type DOMTextNode struct {
-  DOMNode
-  value string
-}
-
-type DOMElementNode struct {
-  DOMNode
-  tagName string
+  tag string
+  text string
   attributes map[string]string
+  children []*DOMNode
 }
 
-func NewDOMTextNode(value string) *DOMTextNode {
-  var node = DOMNode{
-    children: nil,
-  }
-  return &DOMTextNode{
-    node,
-    value,
-  }
-}
-
-func NewDOMElementNode(tagName string, attributes map[string]string, children []DOMNode) *DOMElementNode {
-  var node = DOMNode{
-    children,
-  }
-  return &DOMElementNode{node, tagName, attributes}
-}
+//
+//func NewDOMTextNode(value string) *DOMTextNode {
+//  return &DOMTextNode{
+//    value,
+//  }
+//}
+//
+//func NewDOMElementNode(tagName string, attributes map[string]string, children []DOMNode) *DOMElementNode {
+//  return &DOMElementNode{children, tagName, attributes}
+//}
 
 

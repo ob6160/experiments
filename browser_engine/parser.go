@@ -149,39 +149,59 @@ func (p *Parser) document() bool {
 /**
  * Parses a single node.
  */
-func (p *Parser) node() bool {
+func (p *Parser) node() *DOMNode {
   p.consumeWhitespace()
 
   if !p.openTag() {
-    return false
+    return nil
   }
 
-  for p.node() || p.text() {}
+  var children []*DOMNode
+
+  var n *DOMNode
+  for {
+    n = p.node()
+    if n == nil {
+      n = p.text()
+      if n == nil {
+        break
+      }
+    }
+    children = append(children, n)
+  }
+  
+  n = &DOMNode{
+    children: children,
+    tag:
+  }
 
   if !p.closeTag() {
-    return false
+    return nil
   }
 
   return true
 }
 
-func (p *Parser) text() bool {
+func (p *Parser) text() *DOMNode {
    var val = p.acceptBytesUntilTest(isAlphanumericOrPunctuation)
    if len(val) > 0 {
+     node := DOMNode{
+       text: val,
+     }
      fmt.Println("Consumed string: ", val)
-     return true
+     return &node
    }
-   return false
+   return nil
 }
 
-func (p *Parser) openTag() bool {
+func (p *Parser) openTag() string {
   // if it's a close tag, bail out.
   if p.assertString("</") {
-    return false
+    return ""
   }
 
   if !p.accept('<') {
-    return false
+    return ""
   }
 
   var tagName = p.tagName()
@@ -189,7 +209,7 @@ func (p *Parser) openTag() bool {
 
   // Exit early if we've reached the end of the tag.
   if p.accept('>') {
-    return true
+    return tagName
   }
 
   // Tag isn't over yet, cover any attributes we can find.
@@ -197,11 +217,12 @@ func (p *Parser) openTag() bool {
     p.consumeWhitespace()
     // Quit the loop when we find the end of the tag.
     if p.accept('>') {
-      return true
+      return tagName
     }
   }
 
-  return false
+  // We never found the end of the tag :(
+  return ""
 }
 
 func (p *Parser) closeTag() bool {
