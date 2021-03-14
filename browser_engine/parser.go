@@ -142,7 +142,7 @@ func (p *Parser) Parse() bool {
 
 func (p *Parser) document() bool {
   p.acceptString("<!DOCTYPE html>")
-  p.node()
+  fmt.Printf("%+v\\n", *p.node())
   return true
 }
 
@@ -152,7 +152,8 @@ func (p *Parser) document() bool {
 func (p *Parser) node() *DOMNode {
   p.consumeWhitespace()
 
-  if !p.openTag() {
+  openTag, _ := p.openTag()
+  if openTag == "" {
     return nil
   }
 
@@ -170,16 +171,18 @@ func (p *Parser) node() *DOMNode {
     children = append(children, n)
   }
   
-  n = &DOMNode{
-    children: children,
-    tag:
-  }
 
-  if !p.closeTag() {
+  var closeTag = p.closeTag()
+  if closeTag == "" {
     return nil
   }
 
-  return true
+  n = &DOMNode{
+    children: children,
+    tag: openTag,
+  }
+
+  return n
 }
 
 func (p *Parser) text() *DOMNode {
@@ -194,14 +197,14 @@ func (p *Parser) text() *DOMNode {
    return nil
 }
 
-func (p *Parser) openTag() string {
+func (p *Parser) openTag() (string, map[string]string) {
   // if it's a close tag, bail out.
   if p.assertString("</") {
-    return ""
+    return "", nil
   }
 
   if !p.accept('<') {
-    return ""
+    return "", nil
   }
 
   var tagName = p.tagName()
@@ -209,32 +212,39 @@ func (p *Parser) openTag() string {
 
   // Exit early if we've reached the end of the tag.
   if p.accept('>') {
-    return tagName
+    return tagName, nil
   }
 
   // Tag isn't over yet, cover any attributes we can find.
-  for p.attribute() == true {
+  var attributes = make(map[string]string)
+  var attrName, attrValue = p.attribute()
+  for attrName != "" {
+    attributes[attrName] = attrValue
     p.consumeWhitespace()
     // Quit the loop when we find the end of the tag.
     if p.accept('>') {
-      return tagName
+      return tagName, nil
     }
   }
 
   // We never found the end of the tag :(
-  return ""
+  return "", nil
 }
 
-func (p *Parser) closeTag() bool {
+func (p *Parser) closeTag() string {
   if !p.acceptString("</") {
-    return false
+    return ""
   }
   
   var tagName = p.tagName()
 
   fmt.Println("Close tag: ", tagName)
 
-  return p.accept('>')
+  if p.accept('>') {
+    return tagName
+  }
+
+  return ""
 }
 
 func (p *Parser) tagName() string {
@@ -247,27 +257,27 @@ func (p *Parser) tagName() string {
   return tagName
 }
 
-func (p *Parser) attribute() bool {
+func (p *Parser) attribute() (string, string) {
   var attributeName = p.acceptBytesUntilTest(isAttributeSplit)
 
   // We have an attribute without a value
   if !p.accept('=') {
     log.Println("Attribute: ", "(", attributeName, ")")
-    return true
+    return attributeName, ""
   }
   
   p.consumeWhitespace()
   
   if !p.accept('"', '\'') {
-    return false
+    return "", ""
   }
 
   var attributeValue = p.acceptBytesUntilTest(isQuote)
 
   if !p.accept('"', '\'') {
-    return false
+    return "", ""
   }
 
   log.Println("Attribute: ", "(", attributeName, "=", attributeValue, ")")
-  return true
+  return attributeName, attributeValue
 }
