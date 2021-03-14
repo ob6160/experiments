@@ -68,7 +68,7 @@ func (p *Parser) acceptString(check string) bool {
 }
 
 /**
- * Consumes bytes until provided test function returns true.
+ * Consumes byte provided test function returns true.
  */
 func (p *Parser) acceptByteGivenTest(test func(val byte) bool) (byte, bool) {
   var next, err = p.reader.Peek(1)
@@ -132,18 +132,15 @@ func isQuote(check byte) bool {
 
 /* Actual parsing starts here */
 
-func (p *Parser) Parse() bool {
-  if p.document() {
-    return true
-  }
-  log.Fatal("Problem parsing input")
-  return false
+func (p *Parser) Parse() *DOMNode {
+  var rootNode = p.document()
+  return rootNode
 }
 
-func (p *Parser) document() bool {
+func (p *Parser) document() *DOMNode {
   p.acceptString("<!DOCTYPE html>")
-  fmt.Printf("%+v\\n", *p.node())
-  return true
+  var rootNode = p.node()
+  return rootNode
 }
 
 /**
@@ -152,7 +149,7 @@ func (p *Parser) document() bool {
 func (p *Parser) node() *DOMNode {
   p.consumeWhitespace()
 
-  openTag, _ := p.openTag()
+  openTag, attributes := p.openTag()
   if openTag == "" {
     return nil
   }
@@ -180,6 +177,7 @@ func (p *Parser) node() *DOMNode {
   n = &DOMNode{
     children: children,
     tag: openTag,
+    attributes: attributes,
   }
 
   return n
@@ -223,7 +221,7 @@ func (p *Parser) openTag() (string, map[string]string) {
     p.consumeWhitespace()
     // Quit the loop when we find the end of the tag.
     if p.accept('>') {
-      return tagName, nil
+      return tagName, attributes
     }
   }
 
